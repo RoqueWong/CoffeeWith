@@ -828,9 +828,7 @@
         }
 
         function openShareModal() {
-            // 原本是寫死的網址：const currentUrl = 'https://gemini.google.com/share/856a63bcd874'; 
-            // 改為動態獲取當前網址
-            const currentUrl = window.location.href; 
+            const currentUrl = 'https://gemini.google.com/share/856a63bcd874'; 
             if(shareUrlInput) shareUrlInput.value = currentUrl;
             
             if (!qrcodeInstance && qrcodeContainer) {
