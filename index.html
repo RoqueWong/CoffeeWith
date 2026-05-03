@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game + Keynote</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- 引入 Inter 字體以模擬 Apple 的 San Francisco 字體 -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body { 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            overflow: hidden; 
+            background-color: #000000; 
+            color: #f5f5f7; 
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        /* 隱藏數字輸入框的上下箭頭 */
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+
+        /* 簡報切換動畫基礎設定 */
+        .slide {
+            position: absolute;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            /* 使用類似 iOS 的彈性滑動貝茲曲線 */
+            transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        /* 翻牌動畫設定 (第3頁破冰遊戲) */
+        .perspective { perspective: 1000px; }
+        .flip-card-inner {
+            transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+            transform-style: preserve-3d;
+        }
+        .flipped .flip-card-inner { transform: rotateY(180deg); }
+        .flip-card-front, .flip-card-back {
+            backface-visibility: hidden;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        }
+        .flip-card-back { transform: rotateY(180deg); }
+        
+        /* 隱藏滾動條但保持可滾動 */
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* 蘋果風環境光暈 (Ambient Glow) - 宇宙橙與深藍色 */
+        .ambient-glow-orange {
+            position: absolute;
+            width: 50vw; height: 50vw;
+            background: radial-gradient(circle, rgba(249,115,22,0.15) 0%, rgba(0,0,0,0) 70%);
+            top: 20%; left: 20%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .ambient-glow-blue {
+            position: absolute;
+            width: 50vw; height: 50vw;
+            background: radial-gradient(circle, rgba(37,99,235,0.15) 0%, rgba(0,0,0,0) 70%);
+            bottom: 20%; right: 20%;
+            transform: translate(50%, 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* 文字呼吸放大縮小動畫 */
+        @keyframes breathe {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.03); }
+        }
+        .animate-breathe {
+            animation: breathe 6s ease-in-out infinite;
+        }
+        .animate-breathe-delayed {
+            animation: breathe 6s ease-in-out infinite;
+            animation-delay: 3s; /* 讓兩個文字的呼吸頻率交錯 */
+        }
+        
+        /* 掃描光束動畫 (用於手寫菜單翻譯卡片) */
+        @keyframes scan {
+            0% { transform: translateY(-100%); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(250px); opacity: 0; }
+        }
+
+        /* 思考中動畫 (用於資料查詢卡片) */
+        @keyframes showThenHide {
+            0% { opacity: 0; transform: scale(0.9); }
+            15% { opacity: 1; transform: scale(1); }
+            85% { opacity: 1; transform: scale(1); }
+            100% { opacity: 0; transform: scale(0.9); }
+        }
+    </style>
+</head>
+<body class="bg-black">
+
+    <!-- 簡報容器 -->
+    <div id="presentation-container" class="relative w-full h-screen overflow-hidden bg-black z-10">
+
+        <!-- 第 1 頁 (Slide 0)：封面 -->
+        <div class="slide relative w-full h-full bg-black overflow-hidden" style="transform: translateX(0%);">
+            <div class="ambient-glow-orange"></div>
+            <div class="ambient-glow-blue"></div>
+            
+            <div class="absolute inset-0 flex flex-col items-center justify-center z-10 pointer-events-none px-8 md:px-20">
+                <div class="flex flex-col w-full max-w-5xl pointer-events-auto">
+                    <div class="animate-breathe origin-left self-start z-20 mb-4 sm:mb-6 md:mb-8">
+                        <div class="transform transition-transform duration-1000 hover:scale-105 cursor-default">
+                            <h1 class="text-[6rem] sm:text-[10rem] md:text-[13rem] font-bold leading-none tracking-tighter text-transparent bg-clip-text bg-gradient-to-br from-orange-200 via-orange-500 to-red-700 drop-shadow-[0_0_40px_rgba(249,115,22,0.3)] pb-2">
+                                Game
+                            </h1>
+                        </div>
+                    </div>
+                    <div class="animate-breathe-delayed origin-right self-end z-10 mt-4 sm:mt-6 md:mt-8">
+                        <div class="transform transition-transform duration-1000 hover:scale-105 cursor-default">
+                            <h1 class="text-[5.5rem] sm:text-[9rem] md:text-[11.5rem] font-bold leading-none tracking-tighter text-transparent bg-clip-text bg-gradient-to-tl from-blue-200 via-blue-600 to-slate-800 drop-shadow-[0_0_40px_rgba(37,99,235,0.3)] pb-2">
+                                Keynote
+                            </h1>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第 2 頁 (Slide 1)：過場 - Coffee With... -->
+        <div class="slide flex flex-col items-center justify-center bg-black px-10" style="transform: translateX(100%);">
+            <div class="ambient-glow-orange opacity-40"></div>
+            <h2 class="text-5xl md:text-7xl lg:text-8xl font-semibold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-pink-500 drop-shadow-2xl z-10">
+                Coffee With...
+            </h2>
+        </div>
+
+        <!-- 第 3 頁 (Slide 2)：過場 - Gary's Passion Point -->
+        <div class="slide flex flex-col items-center justify-center bg-black px-10" style="transform: translateX(200%);">
+            <div class="ambient-glow-orange opacity-40"></div>
+            <h2 class="text-5xl md:text-7xl lg:text-8xl font-semibold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-pink-500 drop-shadow-2xl z-10">
+                Gary's Passion Point？
+            </h2>
+        </div>
+
+        <!-- 第 4 頁 (Slide 3)：內容 - Passion Point 遊戲 -->
+        <div class="slide flex flex-col items-center justify-center bg-black px-10" style="transform: translateX(300%);">
+            <h2 class="text-4xl md:text-5xl font-semibold mb-4 tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-pink-500">Gary's Passion Point.</h2>
+            <p class="text-xl md:text-2xl text-white mb-10 font-light">請猜猜看：以下哪 3 個是我的真實興趣？</p>
+            
+            <div id="emojiGameContainer" class="flex flex-wrap justify-center gap-6 max-w-5xl z-10">
+                <!-- Emoji 卡片將由 JS 動態生成 -->
+            </div>
+            
+            <button id="resetIcebreakerBtn" class="mt-10 px-8 py-3 bg-white/10 text-white rounded-full hover:bg-white/20 transition-all font-medium backdrop-blur-md">
+                重新洗牌
+            </button>
+        </div>
+
+        <!-- 第 5 頁 (Slide 4)：過場 - 首次使用AI的體驗 -->
+        <div class="slide flex flex-col items-center justify-center bg-black px-10" style="transform: translateX(400%);">
+            <div class="ambient-glow-orange opacity-40"></div>
+            <h2 class="text-5xl md:text-7xl lg:text-8xl font-semibold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-pink-500 drop-shadow-2xl z-10">
+                首次使用AI的體驗
+            </h2>
+        </div>
+
+        <!-- 第 6 頁 (Slide 5)：內容 - 首次使用AI的體驗 -->
+        <div class="slide flex flex-col items-center justify-center bg-black px-10" style="transform: translateX(500%);">
+            <h2 class="text-4xl md:text-5xl font-semibold mb-8 md:mb-12 tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-pink-500">首次使用AI的體驗</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-7xl z-10">
+                
+                <!-- 1. 資料查詢卡片 -->
+                <div class="bg-[#1c1c1e] rounded-[2rem] p-6 border border-white/5 shadow-2xl flex flex-col hover:border-white/10 transition-colors group cursor-pointer">
+                    <div class="flex justify-between items-end mb-4">
+                        <div class="text-4xl">🔍</div>
+                        <div class="text-[10px] text-blue-400/70 border border-blue-400/30 px-2 py-1 rounded-full animate-pulse group-hover:opacity-0 transition-opacity">Hover 查詢</div>
+                    </div>
+                    <h3 class="text-xl md:text-2xl font-semibold mb-4 text-white tracking-tight">資料查詢</h3>
+                    <div class="bg-black/50 rounded-2xl p-4 flex-1 flex flex-col justify-start space-y-4 relative overflow-hidden">
+                        <div class="flex items-start gap-3 mt-1">
+                            <div class="bg-gray-700 text-white p-3 rounded-2xl rounded-tl-sm shadow-md text-sm leading-relaxed">
+                                我打算4月在日本鳥取市租車，需要租雪胎嗎？
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-end justify-end gap-3 absolute bottom-4 right-4 opacity-0 group-hover:animate-[showThenHide_1s_forwards]">
+                            <div class="bg-gray-600 text-white px-4 py-3 rounded-2xl rounded-tr-sm shadow-md flex gap-1.5 items-center">
+                                <span class="w-1.5 h-1.5 bg-white/80 rounded-full animate-bounce" style="animation-delay: 0ms"></span>
+                                <span class="w-1.5 h-1.5 bg-white/80 rounded-full animate-bounce" style="animation-delay: 150ms"></span>
+                                <span class="w-1.5 h-1.5 bg-white/80 rounded-full animate-bounce" style="animation-delay: 300ms"></span>
+                            </div>
+                        </div>
+
+                        <div class="flex items-end justify-end gap-3 opacity-0 transform translate-y-4 transition-all duration-500 group-hover:opacity-100 group-hover:translate-y-0 delay-1000 group-hover:delay-1000 mt-auto absolute bottom-4 right-4 left-4">
+                            <div class="bg-blue-600 text-white p-3 rounded-2xl rounded-tr-sm shadow-md text-sm leading-relaxed text-left w-full ml-8">
+                                市區及主要道路：若僅在鳥取市區、鳥取砂丘等主要景點活動，且使用國道或主要幹道，通常不需雪胎。
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. 翻譯手寫菜單卡片 -->
+                <div class="bg-[#1c1c1e] rounded-[2rem] p-6 border border-white/5 shadow-2xl flex flex-col hover:border-white/10 transition-colors group cursor-crosshair">
+                    <div class="flex justify-between items-end mb-4">
+                        <div class="text-4xl">📸</div>
+                        <div class="text-[10px] text-emerald-400/70 border border-emerald-400/30 px-2 py-1 rounded-full animate-pulse group-hover:opacity-0 transition-opacity">Hover 掃描翻譯</div>
+                    </div>
+                    <h3 class="text-xl md:text-2xl font-semibold mb-4 text-white tracking-tight">翻譯手寫菜單</h3>
+                    <div class="bg-black/50 rounded-2xl p-4 flex-1 flex flex-col justify-center space-y-3 relative overflow-hidden">
+                        <div class="absolute left-0 right-0 h-[2px] bg-emerald-400 shadow-[0_0_20px_rgba(52,211,153,1)] top-0 transform translate-y-[-100%] group-hover:animate-[scan_1.5s_ease-in-out_infinite] z-10 pointer-events-none"></div>
+                        
+                        <div class="flex items-center w-full bg-white/5 h-11 px-4 rounded-xl border border-white/10 relative z-0 overflow-hidden">
+                            <span class="text-gray-300 text-sm font-serif absolute transition-all duration-500 transform group-hover:-translate-y-8 group-hover:opacity-0">手打ちうどん <span class="text-gray-600 text-xs ml-2">¥800</span></span>
+                            <span class="text-emerald-400 font-bold text-sm absolute transition-all duration-500 transform translate-y-8 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+                                手工烏龍麵
+                            </span>
+                        </div>
+                        
+                        <div class="flex items-center w-full bg-white/5 h-11 px-4 rounded-xl border border-white/10 relative z-0 overflow-hidden">
+                            <span class="text-gray-300 text-sm font-serif absolute transition-all duration-500 transform group-hover:-translate-y-8 group-hover:opacity-0 group-hover:delay-100">天ぷら盛り合わせ <span class="text-gray-600 text-xs ml-2">¥1,200</span></span>
+                            <span class="text-emerald-400 font-bold text-sm absolute transition-all duration-500 transform translate-y-8 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 group-hover:delay-100 flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+                                綜合天婦羅
+                            </span>
+                        </div>
+                        
+                        <div class="flex items-center w-full bg-white/5 h-11 px-4 rounded-xl border border-white/10 relative z-0 overflow-hidden">
+                            <span class="text-gray-300 text-sm font-serif absolute transition-all duration-500 transform group-hover:-translate-y-8 group-hover:opacity-0 group-hover:delay-200">冷やし中華 <span class="text-gray-600 text-xs ml-2">¥950</span></span>
+                            <span class="text-emerald-400 font-bold text-sm absolute transition-all duration-500 transform translate-y-8 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 group-hover:delay-200 flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+                                中華涼麵
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. 即時語音翻譯卡片 -->
+                <div class="bg-[#1c1c1e] rounded-[2rem] p-6 border border-white/5 shadow-2xl flex flex-col hover:border-white/10 transition-colors group cursor-pointer">
+                    <div class="flex justify-between items-end mb-4">
+                        <div class="text-4xl">🗣️</div>
+                        <div class="text-[10px] text-emerald-400/70 border border-emerald-400/30 px-2 py-1 rounded-full animate-pulse group-hover:opacity-0 transition-opacity">Hover 翻譯</div>
+                    </div>
+                    <h3 class="text-xl md:text-2xl font-semibold mb-4 text-white tracking-tight">即時語音翻譯</h3>
+                    <div class="bg-black/50 rounded-2xl p-4 flex-1 flex flex-col justify-start space-y-4 relative overflow-hidden">
+                        
+                        <div class="flex items-start gap-3 mt-1">
+                            <div class="bg-gray-700 text-white p-3 rounded-2xl rounded-tl-sm shadow-md flex items-center gap-3">
+                                <button class="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-colors">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 text-white ml-0.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" /></svg>
+                                </button>
+                                <div class="flex items-center gap-1 opacity-70">
+                                    <div class="w-1 bg-white h-2 rounded-full"></div>
+                                    <div class="w-1 bg-white h-4 rounded-full"></div>
+                                    <div class="w-1 bg-white h-3 rounded-full"></div>
+                                    <div class="w-1 bg-white h-5 rounded-full"></div>
+                                    <div class="w-1 bg-white h-2 rounded-full"></div>
+                                    <div class="w-1 bg-white h-4 rounded-full"></div>
+                                </div>
+                                <span class="text-xs text-white/50 font-mono ml-1">0:03</span>
+                            </div>
+                        </div>
+
+                        <div class="flex items-end justify-end gap-3 absolute bottom-4 right-4 opacity-0 group-hover:animate-[showThenHide_1s_forwards]">
+                            <div class="bg-gray-600 text-white px-4 py-3 rounded-full shadow-md flex gap-2 items-center">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-emerald-400 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
+                                <span class="text-xs text-emerald-400 font-medium">聆聽中...</span>
+                            </div>
+                        </div>
+
+                        <div class="flex items-end justify-end gap-3 opacity-0 transform translate-y-4 transition-all duration-500 group-hover:opacity-100 group-hover:translate-y-0 delay-1000 group-hover:delay-1000 mt-auto absolute bottom-4 right-4 left-4">
+                            <div class="bg-[#34c759] text-white p-3 rounded-2xl rounded-tr-sm shadow-md text-right text-sm leading-relaxed w-full ml-8">
+                                <span class="block text-[10px] text-white/70 mb-1 flex items-center justify-end gap-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.984 0 0013 10a3.983 3.983 0 00-1.172-2.828 1 1 0 010-1.415z" clip-rule="evenodd" /></svg>
+                                    AI 翻譯 (中文)
+                                </span>
+                                已售罄，其他款無問題嗎？
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- 第 7 頁 (Slide 6)：過場 - 作品分享 -->
+        <div class="slide flex flex-col items-center justify-center bg-black px-10" style="transform: translateX(600%);">
+            <div class="ambient-glow-orange opacity-40"></div>
+            <h2 class="text-5xl md:text-7xl lg:text-8xl font-semibold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-pink-500 drop-shadow-2xl z-10">
+                作品分享
+            </h2>
+        </div>
+
+        <!-- 第 8 頁 (Slide 7)：內容 - 作品展示 (嵌入猜數字遊戲) -->
+        <div class="slide flex flex-col items-center justify-center bg-black" style="transform: translateX(700%);">
+            <div class="absolute top-8 left-10 text-gray-400 font-semibold text-2xl tracking-tight hidden md:block">App Showcase</div>
+            
+            <div class="bg-white rounded-[2.5rem] shadow-[0_0_60px_rgba(255,255,255,0.1)] max-w-md w-full overflow-hidden transform scale-90 md:scale-[0.85] lg:scale-95 ring-1 ring-white/10 z-10">
+                <div class="bg-indigo-600 p-6 text-white pt-8">
+                    <div class="flex justify-between items-start w-full gap-2">
+                        <div class="w-20 hidden sm:block"></div>
+                        <div class="flex-1 text-left sm:text-center mt-1">
+                            <h1 id="mainTitle" class="text-2xl sm:text-3xl font-bold mb-1 tracking-tight">猜兩位數遊戲</h1>
+                            <p id="subTitle" class="text-indigo-200 text-xs sm:text-sm">系統已產生一個 10 - 99 的數字</p>
+                        </div>
+                        <div class="flex gap-2 shrink-0 sm:w-20 justify-end">
+                            <button id="langBtn" class="bg-indigo-500 hover:bg-indigo-400 rounded-full transition-colors text-sm font-bold w-9 h-9 flex items-center justify-center shadow-sm" title="切換語言 / Switch Language">EN</button>
+                            <button id="shareBtn" class="bg-indigo-500 hover:bg-indigo-400 rounded-full transition-colors w-9 h-9 flex items-center justify-center shadow-sm" title="分享遊戲">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-indigo-700 rounded-2xl text-left text-sm text-indigo-100 mt-6 shadow-inner overflow-hidden">
+                        <button id="ruleToggleBtn" class="w-full flex justify-between items-center px-5 py-4 font-bold text-indigo-50 hover:bg-indigo-800 transition-colors focus:outline-none">
+                            <span id="ruleTitle">💡 規則說明：</span>
+                            <svg id="ruleIcon" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform transition-transform duration-300 rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
+                        <div id="ruleContentWrapper" class="grid transition-all duration-300" style="grid-template-rows: 1fr;">
+                            <div class="overflow-hidden">
+                                <ul class="list-disc list-inside space-y-2 opacity-90 px-5 pb-5">
+                                    <li id="rule1">輸入 10-99 的數字進行猜測。</li>
+                                    <li id="rule2">系統會提示你有幾個位數完全正確 (數字與位置皆對)。</li>
+                                    <li id="rule3">利用線索，用最少次數猜中答案！</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-5 sm:p-8 text-gray-800">
+                    <div id="message" class="text-center text-gray-600 mb-5 font-medium h-6 transition-colors duration-300">請輸入一個兩位數來開始遊戲！</div>
+                    <div class="flex gap-3 mb-5">
+                        <input type="number" id="guessInput" min="10" max="99" placeholder="例如: 41" class="flex-1 border-2 border-gray-300 bg-white rounded-xl px-4 py-3 text-2xl text-center focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-colors" autocomplete="off">
+                        <button id="submitBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-xl transition-colors shadow-md disabled:bg-gray-400">猜測</button>
+                    </div>
+                    <button id="restartBtn" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-4 px-6 rounded-xl transition-colors shadow-md hidden mb-5">再玩一次</button>
+                    <div class="border-t border-gray-200 pt-5 mt-2">
+                        <h2 class="text-lg font-semibold text-gray-700 mb-3 flex items-center justify-between">
+                            <span id="historyTitleText">猜測紀錄</span>
+                            <span id="attemptCount" class="text-sm bg-indigo-100 text-indigo-800 py-1 px-3 rounded-full font-bold">第 0 次</span>
+                        </h2>
+                        <div class="bg-gray-50 rounded-2xl max-h-48 overflow-y-auto border border-gray-200 p-2 hide-scrollbar shadow-inner">
+                            <ul id="historyList" class="space-y-2">
+                                <li class="text-center text-gray-400 py-3" id="emptyHistory">尚未有猜測紀錄</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="qrModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100] hidden opacity-0 transition-opacity duration-300">
+                <div class="bg-white rounded-[2rem] p-8 max-w-sm w-full mx-4 transform scale-95 transition-transform duration-300 shadow-2xl" id="qrModalContent">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 id="shareModalTitle" class="text-2xl font-bold text-gray-800 tracking-tight">分享遊戲</h3>
+                        <button id="closeQrBtn" class="text-gray-400 hover:text-gray-700 transition-colors rounded-full p-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <div id="qrcode" class="mb-6 p-4 bg-white border-2 border-indigo-50 rounded-2xl shadow-sm"></div>
+                        <p id="shareModalDesc" class="text-sm text-gray-500 mb-6 text-center leading-relaxed">掃描上方 QR Code<br>或複製下方連結與朋友一起玩！</p>
+                        <div class="flex w-full gap-2">
+                            <input type="text" id="shareUrlInput" class="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm text-gray-600 focus:outline-none" readonly>
+                            <button id="copyUrlBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-xl text-sm font-bold transition-colors">複製</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第 9 頁 (Slide 8)：過場 - 創作思路 -->
+        <div class="slide flex flex-col items-center justify-center bg-black px-10" style="transform: translateX(800%);">
+            <div class="ambient-glow-orange opacity-40"></div>
+            <h2 class="text-5xl md:text-7xl lg:text-8xl font-semibold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-pink-500 drop-shadow-2xl z-10">
+                創作思路
+            </h2>
+        </div>
+
+        <!-- 第 10 頁 (Slide 9)：內容 - 創作思路 (時間線) -->
+        <div class="slide flex flex-col items-center justify-center bg-black px-10" style="transform: translateX(900%);">
+            <h2 class="text-4xl md:text-5xl font-semibold mb-10 tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-pink-500">Design Evolution.</h2>
+            
+            <div class="w-full max-w-6xl relative z-10">
+                <div class="absolute left-1/2 transform -translate-x-1/2 h-full w-[2px] bg-white/10"></div>
+                
+                <div class="space-y-16">
+                    <div class="relative flex items-center justify-between w-full group">
+                        <div class="w-5/12 text-right pr-10 md:pr-16 transition-transform duration-500 group-hover:-translate-x-2">
+                            <h3 class="text-2xl md:text-3xl font-semibold text-white mb-4">V1: 定義需求</h3>
+                            <p class="text-lg md:text-xl text-gray-300 font-light leading-relaxed">利用 Website 製作一個遊戲，內容是隨機生成 2 位數的數值，之後用戶可以輸入猜測。<br>網頁會對比數值，顯示有多少位個位數、十位數的正確數量和是否完全正確，如未猜中則重新輸入直至正確。</p>
+                        </div>
+                        <div class="w-4 h-4 rounded-full bg-gray-300 shadow-[0_0_15px_rgba(255,255,255,0.8)] absolute left-1/2 transform -translate-x-1/2 z-10"></div>
+                        <div class="w-5/12 pl-10 md:pl-16"></div>
+                    </div>
+                    <div class="relative flex items-center justify-between w-full group">
+                        <div class="w-5/12 pr-10 md:pr-16"></div>
+                        <div class="w-4 h-4 rounded-full bg-blue-400 shadow-[0_0_15px_rgba(96,165,250,0.8)] absolute left-1/2 transform -translate-x-1/2 z-10"></div>
+                        <div class="w-5/12 text-left pl-10 md:pl-16 transition-transform duration-500 group-hover:translate-x-2">
+                            <h3 class="text-2xl md:text-3xl font-semibold text-white mb-4">V2: 難度升級</h3>
+                            <p class="text-lg md:text-xl text-gray-300 font-light leading-relaxed">我想加強難度，新版本不會顯示「具體是個位數還是十位數」正確，而是僅顯示「有多少個位數正確」的總數量，增加玩家推理感。</p>
+                        </div>
+                    </div>
+                    <div class="relative flex items-center justify-between w-full group">
+                        <div class="w-5/12 text-right pr-10 md:pr-16 transition-transform duration-500 group-hover:-translate-x-2">
+                            <h3 class="text-2xl md:text-3xl font-semibold text-white mb-4">V3: 除錯與優化</h3>
+                            <p class="text-lg md:text-xl text-gray-300 font-light leading-relaxed">加入 QR Code 分享功能<br>無縫切換的中英文雙語系統<br>加入猜測後自動折疊的規則說明<br>優化整體 UX 體驗。</p>
+                        </div>
+                        <div class="w-4 h-4 rounded-full bg-purple-400 shadow-[0_0_15px_rgba(192,132,252,0.8)] absolute left-1/2 transform -translate-x-1/2 z-10"></div>
+                        <div class="w-5/12 pl-10 md:pl-16"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第 11 頁 (Slide 10)：內容 - 關鍵提示技巧 (Prompt Tips 結合 SMART) -->
+        <div class="slide flex flex-col items-center justify-center bg-black px-6 md:px-10" style="transform: translateX(1000%);">
+            <div class="text-center mb-8 md:mb-10 z-10">
+                <h2 class="text-4xl md:text-5xl font-semibold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-pink-500 mb-3">Prompt Tips: SMART 原則</h2>
+                <p class="text-xl md:text-2xl font-medium tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-pink-500">關鍵提示技巧 (Prompt Tips)</p>
+            </div>
+            
+            <div class="w-full max-w-7xl z-10 flex flex-col items-center">
+                <!-- 上排 3 卡片 (S, M, A) -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6 w-full mb-5 md:mb-6">
+                    <div class="bg-[#1c1c1e] p-6 rounded-[2rem] border border-white/5 hover:border-orange-500/50 transition-all duration-500 group relative overflow-hidden flex flex-col h-full">
+                        <div class="absolute inset-0 bg-gradient-to-br from-orange-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        <div class="flex items-end gap-3 mb-3 relative z-10">
+                            <span class="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-br from-orange-400 to-pink-500">S</span>
+                            <h3 class="text-lg md:text-xl font-semibold text-white tracking-tight pb-1">Specific 具體</h3>
+                        </div>
+                        <p class="text-gray-400 text-xs md:text-sm mb-4 flex-1 relative z-10">設定清晰的「角色定位」與「任務目標」，避免模糊不清的開放式指令。</p>
+                        <div class="bg-black/40 rounded-2xl p-4 text-xs space-y-2.5 relative z-10 border border-white/5">
+                            <div class="text-red-400 flex gap-2 items-start"><span class="shrink-0 mt-0.5">❌</span><span class="opacity-80">幫我寫一篇推銷耳機的文案。</span></div>
+                            <div class="text-emerald-400 flex gap-2 items-start"><span class="shrink-0 mt-0.5">✅</span><span class="opacity-90 font-medium leading-relaxed">你現在是一位資深社群小編，請為「新款降噪耳機」寫一篇幽默風格的 IG 推廣文。</span></div>
+                        </div>
+                    </div>
+
+                    <div class="bg-[#1c1c1e] p-6 rounded-[2rem] border border-white/5 hover:border-blue-500/50 transition-all duration-500 group relative overflow-hidden flex flex-col h-full">
+                        <div class="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        <div class="flex items-end gap-3 mb-3 relative z-10">
+                            <span class="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-br from-blue-400 to-indigo-500">M</span>
+                            <h3 class="text-lg md:text-xl font-semibold text-white tracking-tight pb-1">Measurable 可衡量</h3>
+                        </div>
+                        <p class="text-gray-400 text-xs md:text-sm mb-4 flex-1 relative z-10">給予明確的量化條件（如字數、數量、段落數），讓產出結果符合預期長度。</p>
+                        <div class="bg-black/40 rounded-2xl p-4 text-xs space-y-2.5 relative z-10 border border-white/5">
+                            <div class="text-red-400 flex gap-2 items-start"><span class="shrink-0 mt-0.5">❌</span><span class="opacity-80">給我幾個行銷標題的點子。</span></div>
+                            <div class="text-emerald-400 flex gap-2 items-start"><span class="shrink-0 mt-0.5">✅</span><span class="opacity-90 font-medium leading-relaxed">請提供 5 個不同的行銷標題，每個標題請限制在 15 個字以內。</span></div>
+                        </div>
+                    </div>
+
+                    <div class="bg-[#1c1c1e] p-6 rounded-[2rem] border border-white/5 hover:border-emerald-500/50 transition-all duration-500 group relative overflow-hidden flex flex-col h-full">
+                        <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        <div class="flex items-end gap-3 mb-3 relative z-10">
+                            <span class="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-br from-emerald-400 to-teal-500">A</span>
+                            <h3 class="text-lg md:text-xl font-semibold text-white tracking-tight pb-1">Actionable 步驟化</h3>
+                        </div>
+                        <p class="text-gray-400 text-xs md:text-sm mb-4 flex-1 relative z-10">將龐雜的目標拆解為可執行的階段，透過「迭代互動」引導 AI 完成。</p>
+                        <div class="bg-black/40 rounded-2xl p-4 text-xs space-y-2.5 relative z-10 border border-white/5">
+                            <div class="text-red-400 flex gap-2 items-start"><span class="shrink-0 mt-0.5">❌</span><span class="opacity-80">幫我寫一份完整的年度行銷企劃案。</span></div>
+                            <div class="text-emerald-400 flex gap-2 items-start"><span class="shrink-0 mt-0.5">✅</span><span class="opacity-90 font-medium leading-relaxed">請先列出企劃案的 5 大結構大綱，等我確認無誤後，我們再逐段擴寫內容。</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 下排 2 卡片 (R, T) 置中 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-6 w-full max-w-4xl">
+                    <div class="bg-[#1c1c1e] p-6 rounded-[2rem] border border-white/5 hover:border-purple-500/50 transition-all duration-500 group relative overflow-hidden flex flex-col h-full">
+                        <div class="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        <div class="flex items-end gap-3 mb-3 relative z-10">
+                            <span class="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-br from-purple-400 to-fuchsia-500">R</span>
+                            <h3 class="text-lg md:text-xl font-semibold text-white tracking-tight pb-1">Relevant 相關背景</h3>
+                        </div>
+                        <p class="text-gray-400 text-xs md:text-sm mb-4 flex-1 relative z-10">提供充足的背景資訊（受眾是誰、使用場景為何），讓產出與現實高度相關。</p>
+                        <div class="bg-black/40 rounded-2xl p-4 text-xs space-y-2.5 relative z-10 border border-white/5">
+                            <div class="text-red-400 flex gap-2 items-start"><span class="shrink-0 mt-0.5">❌</span><span class="opacity-80">請解釋什麼是區塊鏈技術。</span></div>
+                            <div class="text-emerald-400 flex gap-2 items-start"><span class="shrink-0 mt-0.5">✅</span><span class="opacity-90 font-medium leading-relaxed">請向「對科技零基礎的長輩」解釋區塊鏈，請用菜市場買菜或銀行存錢來舉例說明。</span></div>
+                        </div>
+                    </div>
+
+                    <div class="bg-[#1c1c1e] p-6 rounded-[2rem] border border-white/5 hover:border-rose-500/50 transition-all duration-500 group relative overflow-hidden flex flex-col h-full">
+                        <div class="absolute inset-0 bg-gradient-to-br from-rose-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        <div class="flex items-end gap-3 mb-3 relative z-10">
+                            <span class="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-br from-rose-400 to-red-500">T</span>
+                            <h3 class="text-lg md:text-xl font-semibold text-white tracking-tight pb-1">Time-bound 時間範圍</h3>
+                        </div>
+                        <p class="text-gray-400 text-xs md:text-sm mb-4 flex-1 relative z-10">給予明確的時間背景或時效限制，讓 AI 聚焦在特定時間段的資料或情境。</p>
+                        <div class="bg-black/40 rounded-2xl p-4 text-xs space-y-2.5 relative z-10 border border-white/5">
+                            <div class="text-red-400 flex gap-2 items-start"><span class="shrink-0 mt-0.5">❌</span><span class="opacity-80">幫我整理電動車的市場趨勢。</span></div>
+                            <div class="text-emerald-400 flex gap-2 items-start"><span class="shrink-0 mt-0.5">✅</span><span class="opacity-90 font-medium leading-relaxed">請幫我整理「2023至2024年」台灣電動車市場的銷售趨勢變化。</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第 12 頁 (Slide 11)：過場 - 學習與反思 -->
+        <div class="slide flex flex-col items-center justify-center bg-black px-10" style="transform: translateX(1100%);">
+            <div class="ambient-glow-orange opacity-40"></div>
+            <h2 class="text-5xl md:text-7xl lg:text-8xl font-semibold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-pink-500 drop-shadow-2xl z-10">
+                學習與反思
+            </h2>
+        </div>
+
+        <!-- 第 13 頁 (Slide 12)：內容 - 學習與反思 -->
+        <div class="slide flex flex-col items-center justify-center bg-black px-10" style="transform: translateX(1200%);">
+            <h2 class="text-4xl md:text-5xl font-semibold mb-12 tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-pink-500">學習與反思</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-6xl z-10">
+                <div class="group relative bg-white/5 backdrop-blur-3xl p-10 md:p-16 rounded-[2.5rem] border border-white/10 hover:border-blue-500/50 transition-all duration-500 overflow-hidden flex flex-col items-center text-center justify-center h-64 md:h-72">
+                    <div class="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <div class="text-6xl mb-6 relative z-10 transform group-hover:scale-110 transition-transform duration-500">⚡</div>
+                    <h3 class="text-3xl font-semibold text-white mb-2 tracking-tight relative z-10">高效</h3>
+                    <p class="text-blue-400 text-sm font-medium tracking-widest uppercase relative z-10">Efficiency</p>
+                </div>
+
+                <div class="group relative bg-white/5 backdrop-blur-3xl p-10 md:p-16 rounded-[2.5rem] border border-white/10 hover:border-purple-500/50 transition-all duration-500 overflow-hidden flex flex-col items-center text-center justify-center h-64 md:h-72">
+                    <div class="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <div class="text-6xl mb-6 relative z-10 transform group-hover:scale-110 transition-transform duration-500">🎨</div>
+                    <h3 class="text-3xl font-semibold text-white mb-2 tracking-tight relative z-10">創意</h3>
+                    <p class="text-purple-400 text-sm font-medium tracking-widest uppercase relative z-10">Creativity</p>
+                </div>
+
+                <div class="group relative bg-white/5 backdrop-blur-3xl p-10 md:p-16 rounded-[2.5rem] border border-white/10 hover:border-orange-500/50 transition-all duration-500 overflow-hidden flex flex-col items-center text-center justify-center h-64 md:h-72">
+                    <div class="absolute inset-0 bg-gradient-to-br from-orange-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <div class="text-6xl mb-6 relative z-10 transform group-hover:scale-110 transition-transform duration-500">🤝</div>
+                    <h3 class="text-3xl font-semibold text-white mb-2 tracking-tight relative z-10">以人為本</h3>
+                    <p class="text-orange-400 text-sm font-medium tracking-widest uppercase relative z-10">Human-Centric</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 第 14 頁 (Slide 13)：Q&A 與交流 -->
+        <div class="slide flex flex-col items-center justify-center bg-black" style="transform: translateX(1300%);">
+            <div class="text-center z-10">
+                <h2 class="text-[5rem] md:text-[8rem] font-semibold mb-4 tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-pink-500">Q&A.</h2>
+                <p class="text-2xl md:text-3xl text-gray-400 font-light tracking-wide">Thank you for listening.</p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 簡報導航按鈕 -->
+    <div class="fixed bottom-8 left-0 right-0 flex justify-center items-center gap-6 z-50">
+        <button id="prevBtn" class="text-white/50 hover:text-white w-10 h-10 flex items-center justify-center transition-colors disabled:opacity-20 disabled:cursor-not-allowed">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19l-7-7 7-7" /></svg>
+        </button>
+        <!-- 頁碼指示器 -->
+        <div class="flex items-center gap-3 bg-white/5 backdrop-blur-md px-4 py-2 rounded-full border border-white/10" id="dotsContainer">
+            <!-- 動態生成 -->
+        </div>
+        <button id="nextBtn" class="text-white/50 hover:text-white w-10 h-10 flex items-center justify-center transition-colors disabled:opacity-20 disabled:cursor-not-allowed">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5l7 7-7 7" /></svg>
+        </button>
+    </div>
+
+    <!-- 腳本區塊 -->
+    <script>
+        /* =====================================================================
+           1. 簡報核心切換邏輯
+           ===================================================================== */
+        const slides = document.querySelectorAll('.slide');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const dotsContainer = document.getElementById('dotsContainer');
+        let currentSlide = 0;
+
+        // 生成底部點點指示器
+        slides.forEach((_, i) => {
+            const dot = document.createElement('div');
+            dot.className = `w-1.5 h-1.5 rounded-full transition-all duration-500 ${i === 0 ? 'bg-white w-4' : 'bg-white/30'}`;
+            dotsContainer.appendChild(dot);
+        });
+        const dots = dotsContainer.children;
+
+        function updateSlide() {
+            slides.forEach((slide, i) => {
+                slide.style.transform = `translateX(${(i - currentSlide) * 100}%)`;
+            });
+            
+            // 更新點點狀態
+            Array.from(dots).forEach((dot, i) => {
+                dot.className = `w-1.5 h-1.5 rounded-full transition-all duration-500 ${i === currentSlide ? 'bg-white w-5' : 'bg-white/30'}`;
+            });
+
+            // 按鈕狀態
+            prevBtn.disabled = currentSlide === 0;
+            nextBtn.disabled = currentSlide === slides.length - 1;
+        }
+
+        prevBtn.addEventListener('click', () => { if(currentSlide > 0) { currentSlide--; updateSlide(); } });
+        nextBtn.addEventListener('click', () => { if(currentSlide < slides.length - 1) { currentSlide++; updateSlide(); } });
+        
+        // 鍵盤方向鍵切換 (確保輸入框輸入時不觸發切換)
+        document.addEventListener('keydown', (e) => {
+            if (document.activeElement.tagName === 'INPUT') return;
+            if (e.key === 'ArrowLeft' && currentSlide > 0) { currentSlide--; updateSlide(); }
+            if (e.key === 'ArrowRight' && currentSlide < slides.length - 1) { currentSlide++; updateSlide(); }
+        });
+        updateSlide(); // 初始化狀態
+
+
+        /* =====================================================================
+           2. Passion Point 破冰遊戲邏輯 (3真2假)
+           ===================================================================== */
+        const truths = [
+            { emoji: '👨🏻‍💻', label: '科技', isTrue: true },
+            { emoji: '🎮', label: '遊戲', isTrue: true },
+            { emoji: '✈️', label: '旅行', isTrue: true }
+        ];
+        
+        const liesPool = [
+            { emoji: '🏃‍♂️', label: '跑步', isTrue: false },
+            { emoji: '🧑‍🍳', label: '烹飪', isTrue: false },
+            { emoji: '🎸', label: '吉他', isTrue: false },
+            { emoji: '🏄‍♂️', label: '衝浪', isTrue: false },
+            { emoji: '🏎️', label: '賽車', isTrue: false },
+            { emoji: '🤿', label: '潛水', isTrue: false },
+            { emoji: '🪴', label: '園藝', isTrue: false }
+        ];
+
+        const emojiGameContainer = document.getElementById('emojiGameContainer');
+        const resetIcebreakerBtn = document.getElementById('resetIcebreakerBtn');
+
+        function initIcebreakerGame() {
+            if (!emojiGameContainer) return;
+            emojiGameContainer.innerHTML = '';
+            
+            // 隨機選出2個假選項
+            const shuffledLies = [...liesPool].sort(() => 0.5 - Math.random()).slice(0, 2);
+            // 組合3真2假，並打亂順序
+            const finalEmojis = [...truths, ...shuffledLies].sort(() => 0.5 - Math.random());
+
+            finalEmojis.forEach((item, index) => {
+                const card = document.createElement('div');
+                card.className = 'perspective cursor-pointer w-32 h-40 sm:w-40 sm:h-48 group';
+                
+                card.innerHTML = `
+                    <div class="flip-card-inner relative w-full h-full shadow-2xl rounded-3xl">
+                        <!-- 正面 -->
+                        <div class="flip-card-front bg-[#1c1c1e] border border-white/5 rounded-3xl flex flex-col items-center justify-center group-hover:border-white/20 transition-colors">
+                            <span class="text-5xl sm:text-7xl mb-4">${item.emoji}</span>
+                            <span class="text-sm sm:text-base text-white font-medium tracking-wide">${item.label}</span>
+                        </div>
+                        <!-- 背面 -->
+                        <div class="flip-card-back rounded-3xl flex flex-col items-center justify-center border-2 ${item.isTrue ? 'bg-[#1c1c1e] border-[#34c759]' : 'bg-[#1c1c1e] border-[#ff3b30]'}">
+                            <span class="text-3xl font-bold ${item.isTrue ? 'text-[#34c759]' : 'text-[#ff3b30]'}">
+                                ${item.isTrue ? 'True.' : 'False.'}
+                            </span>
+                        </div>
+                    </div>
+                `;
+
+                card.addEventListener('click', function() {
+                    this.classList.toggle('flipped');
+                });
+
+                emojiGameContainer.appendChild(card);
+            });
+        }
+        
+        if(resetIcebreakerBtn) resetIcebreakerBtn.addEventListener('click', initIcebreakerGame);
+        initIcebreakerGame();
+
+
+        /* =====================================================================
+           3. 猜兩位數遊戲核心邏輯
+           ===================================================================== */
+        let currentLang = 'zh';
+        const t = {
+            zh: {
+                title: "猜兩位數遊戲", subtitle: "系統已產生一個 10 - 99 的數字", initMsg: "請輸入一個兩位數來開始遊戲！",
+                placeholder: "例如: 41", guessBtn: "猜測", restartBtn: "再玩一次", historyTitle: "猜測紀錄",
+                attemptCount0: "第 0 次", emptyHistory: "尚未有猜測紀錄", shareTitle: "分享遊戲",
+                shareDesc: "掃描上方 QR Code<br>或複製下方連結與朋友一起玩！", copyBtn: "複製", copiedBtn: "已複製!",
+                errorMsg: "請輸入有效的兩位數正整數 (10-99)！", winMsg: "🎉 恭喜你答對了！答案就是 ",
+                wrongMsg: "不正確，請參考下方提示繼續猜測！", correctDigits: "正確位數: ", digitsUnit: " 個",
+                attemptsPrefix: "共 ", attemptsSuffix: " 次", shareTooltip: "分享遊戲", langToggleText: "EN",
+                ruleTitle: "💡 規則說明：", rule1: "輸入 10-99 的數字進行猜測。", rule2: "系統會提示你有幾個位數完全正確 (數字與位置皆對)。",
+                rule3: "利用線索，用最少次數猜中答案！"
+            },
+            en: {
+                title: "Guess the Number", subtitle: "A number between 10 - 99 is generated", initMsg: "Enter a 2-digit number to start!",
+                placeholder: "e.g. 42", guessBtn: "Guess", restartBtn: "Play Again", historyTitle: "Guess History",
+                attemptCount0: "0 Attempts", emptyHistory: "No guesses yet", shareTitle: "Share Game",
+                shareDesc: "Scan the QR Code above<br>or copy the link below to play!", copyBtn: "Copy", copiedBtn: "Copied!",
+                errorMsg: "Please enter a valid 2-digit number (10-99)!", winMsg: "🎉 Congrats! The answer is ",
+                wrongMsg: "Incorrect, check the hint below and keep guessing!", correctDigits: "Correct digits: ", digitsUnit: "",
+                attemptsPrefix: "", attemptsSuffix: " Attempts", shareTooltip: "Share Game", langToggleText: "中",
+                ruleTitle: "💡 How to play:", rule1: "Enter a number between 10-99.", rule2: "The system tells you how many digits are perfectly matched.",
+                rule3: "Use the hints to guess the answer in the fewest attempts!"
+            }
+        };
+
+        let targetNumber = 0, attempts = 0, isGameOver = false, currentMessageKey = 'initMsg';
+        let historyData = [], isRulesExpanded = true, hasGuessed = false;
+
+        const guessInput = document.getElementById('guessInput'), submitBtn = document.getElementById('submitBtn'),
+              restartBtn = document.getElementById('restartBtn'), messageEl = document.getElementById('message'),
+              historyList = document.getElementById('historyList'), attemptCount = document.getElementById('attemptCount'),
+              mainTitle = document.getElementById('mainTitle'), subTitle = document.getElementById('subTitle'),
+              historyTitleText = document.getElementById('historyTitleText'), shareModalTitle = document.getElementById('shareModalTitle'),
+              shareModalDesc = document.getElementById('shareModalDesc'), langBtn = document.getElementById('langBtn'),
+              ruleTitle = document.getElementById('ruleTitle'), rule1 = document.getElementById('rule1'),
+              rule2 = document.getElementById('rule2'), rule3 = document.getElementById('rule3'),
+              ruleToggleBtn = document.getElementById('ruleToggleBtn'), ruleContentWrapper = document.getElementById('ruleContentWrapper'),
+              ruleIcon = document.getElementById('ruleIcon'), shareBtn = document.getElementById('shareBtn'),
+              qrModal = document.getElementById('qrModal'), qrModalContent = document.getElementById('qrModalContent'),
+              closeQrBtn = document.getElementById('closeQrBtn'), qrcodeContainer = document.getElementById('qrcode'),
+              shareUrlInput = document.getElementById('shareUrlInput'), copyUrlBtn = document.getElementById('copyUrlBtn');
+        let qrcodeInstance = null;
+
+        function updateUI() {
+            const lang = t[currentLang];
+            if(mainTitle) mainTitle.textContent = lang.title;
+            if(subTitle) subTitle.textContent = lang.subtitle;
+            if(guessInput) guessInput.placeholder = lang.placeholder;
+            if(submitBtn) submitBtn.textContent = lang.guessBtn;
+            if(restartBtn) restartBtn.textContent = lang.restartBtn;
+            if(historyTitleText) historyTitleText.textContent = lang.historyTitle;
+            if(shareModalTitle) shareModalTitle.textContent = lang.shareTitle;
+            if(shareModalDesc) shareModalDesc.innerHTML = lang.shareDesc;
+            if (copyUrlBtn && copyUrlBtn.textContent !== t.zh.copiedBtn && copyUrlBtn.textContent !== t.en.copiedBtn) copyUrlBtn.textContent = lang.copyBtn;
+            if(shareBtn) shareBtn.title = lang.shareTooltip;
+            if(langBtn) langBtn.textContent = lang.langToggleText;
+            if(ruleTitle) ruleTitle.textContent = lang.ruleTitle;
+            if(rule1) rule1.textContent = lang.rule1;
+            if(rule2) rule2.textContent = lang.rule2;
+            if(rule3) rule3.textContent = lang.rule3;
+            
+            if (currentMessageKey === 'winMsg' && messageEl) messageEl.textContent = lang.winMsg + targetNumber + "！";
+            else if (messageEl) messageEl.textContent = lang[currentMessageKey];
+            
+            if (attemptCount) {
+                if (attempts === 0) attemptCount.textContent = lang.attemptCount0;
+                else attemptCount.textContent = lang.attemptsPrefix + attempts + lang.attemptsSuffix;
+            }
+            renderHistoryList(false);
+        }
+
+        function toggleRules(forceCollapse = false, forceExpand = false) {
+            if(!ruleContentWrapper || !ruleIcon) return;
+            if (forceCollapse) isRulesExpanded = false; else if (forceExpand) isRulesExpanded = true; else isRulesExpanded = !isRulesExpanded;
+            if (isRulesExpanded) { ruleContentWrapper.style.gridTemplateRows = '1fr'; ruleIcon.classList.add('rotate-180'); } 
+            else { ruleContentWrapper.style.gridTemplateRows = '0fr'; ruleIcon.classList.remove('rotate-180'); }
+        }
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'zh' ? 'en' : 'zh';
+            updateUI();
+        }
+
+        function initGame() {
+            targetNumber = Math.floor(Math.random() * 90) + 10;
+            attempts = 0; isGameOver = false; currentMessageKey = 'initMsg'; historyData = []; hasGuessed = false;
+            
+            if(guessInput) { guessInput.value = ''; guessInput.disabled = false; }
+            if(submitBtn) submitBtn.disabled = false;
+            if(restartBtn) restartBtn.classList.add('hidden');
+            if(messageEl) messageEl.className = 'text-center text-gray-600 mb-5 font-medium h-6 transition-colors duration-300';
+            
+            updateUI(); toggleRules(false, true);
+        }
+
+        function processGuess() {
+            if (isGameOver || !guessInput) return;
+            const guessValue = guessInput.value;
+            
+            if (!guessValue || guessValue < 10 || guessValue > 99 || !Number.isInteger(Number(guessValue))) {
+                setGameMessage('errorMsg', 'text-red-500 font-bold');
+                guessInput.classList.add('animate-pulse'); 
+                setTimeout(() => guessInput.classList.remove('animate-pulse'), 500); return;
+            }
+            
+            const guessNum = parseInt(guessValue, 10); attempts++;
+            if (!hasGuessed) { hasGuessed = true; toggleRules(true, false); }
+            
+            const targetTens = Math.floor(targetNumber / 10), targetUnits = targetNumber % 10;
+            const guessTens = Math.floor(guessNum / 10), guessUnits = guessNum % 10;
+            let totalCorrect = (targetTens === guessTens ? 1 : 0) + (targetUnits === guessUnits ? 1 : 0);
+
+            if (guessNum === targetNumber) {
+                isGameOver = true; setGameMessage('winMsg', 'text-emerald-600 font-bold text-xl');
+                guessInput.disabled = true; submitBtn.disabled = true; restartBtn.classList.remove('hidden');
+            } else { setGameMessage('wrongMsg', 'text-amber-600 font-bold'); }
+
+            historyData.unshift({ guess: guessNum, correct: totalCorrect, win: guessNum === targetNumber });
+            renderHistoryList(true); guessInput.value = '';
+        }
+
+        function setGameMessage(key, classes) {
+            currentMessageKey = key; 
+            if(!messageEl) return;
+            messageEl.className = `text-center mb-5 h-6 transition-colors duration-300 ${classes}`;
+            if (key === 'winMsg') messageEl.textContent = t[currentLang].winMsg + targetNumber + "！";
+            else messageEl.textContent = t[currentLang][key];
+        }
+
+        function renderHistoryList(animateFirst = false) {
+            if(!historyList) return;
+            const lang = t[currentLang]; historyList.innerHTML = '';
+            
+            if (historyData.length === 0) { 
+                historyList.innerHTML = `<li class="text-center text-gray-400 py-3" id="emptyHistory">${lang.emptyHistory}</li>`; 
+                return; 
+            }
+            
+            historyData.forEach((record, index) => {
+                const li = document.createElement('li');
+                const bgClass = record.win ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-gray-100';
+                const iconClass = record.win ? 'text-emerald-500' : 'text-indigo-500';
+                
+                if (index === 0 && animateFirst) li.className = `${bgClass} border rounded-xl p-3 px-4 flex items-center justify-between shadow-sm transform transition-all duration-300 opacity-0 -translate-y-2`;
+                else li.className = `${bgClass} border rounded-xl p-3 px-4 flex items-center justify-between shadow-sm transform transition-all duration-300`;
+                
+                li.innerHTML = `
+                    <div class="flex items-center gap-3"><span class="font-mono text-2xl font-bold ${iconClass} w-8 text-center">${record.guess}</span></div>
+                    <div class="text-sm flex gap-2"><span class="px-3 py-1.5 rounded-lg ${record.correct > 0 ? 'text-blue-700 font-bold bg-blue-100' : 'text-gray-500 bg-gray-100'}">${lang.correctDigits}${record.correct}${lang.digitsUnit}</span></div>
+                `;
+                historyList.appendChild(li);
+                if (index === 0 && animateFirst) setTimeout(() => { li.classList.remove('opacity-0', '-translate-y-2'); }, 10);
+            });
+            if(attemptCount) attemptCount.textContent = lang.attemptsPrefix + attempts + lang.attemptsSuffix;
+        }
+
+        function openShareModal() {
+            // 原本是寫死的網址：const currentUrl = 'https://gemini.google.com/share/856a63bcd874'; 
+            // 改為動態獲取當前網址
+            const currentUrl = window.location.href; 
+            if(shareUrlInput) shareUrlInput.value = currentUrl;
+            
+            if (!qrcodeInstance && qrcodeContainer) {
+                qrcodeInstance = new QRCode(qrcodeContainer, { text: currentUrl, width: 180, height: 180, colorDark : "#4F46E5", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.H });
+            } else if (qrcodeInstance) { 
+                qrcodeInstance.clear(); qrcodeInstance.makeCode(currentUrl); 
+            }
+            
+            if(qrModal) {
+                qrModal.classList.remove('hidden'); void qrModal.offsetWidth; 
+                qrModal.classList.remove('opacity-0'); 
+                if(qrModalContent) qrModalContent.classList.remove('scale-95');
+            }
+        }
+
+        function closeShareModal() {
+            if(qrModal) {
+                qrModal.classList.add('opacity-0'); 
+                if(qrModalContent) qrModalContent.classList.add('scale-95');
+                setTimeout(() => { qrModal.classList.add('hidden'); }, 300); 
+            }
+        }
+
+        function copyUrl() {
+            if(!shareUrlInput || !copyUrlBtn) return;
+            shareUrlInput.select(); document.execCommand('copy');
+            copyUrlBtn.textContent = t[currentLang].copiedBtn;
+            copyUrlBtn.classList.replace('bg-indigo-600', 'bg-emerald-500'); copyUrlBtn.classList.replace('hover:bg-indigo-700', 'hover:bg-emerald-600');
+            setTimeout(() => {
+                copyUrlBtn.textContent = t[currentLang].copyBtn;
+                copyUrlBtn.classList.replace('bg-emerald-500', 'bg-indigo-600'); copyUrlBtn.classList.replace('hover:bg-emerald-600', 'hover:bg-indigo-700');
+            }, 2000);
+        }
+
+        if(submitBtn) submitBtn.addEventListener('click', processGuess); 
+        if(restartBtn) restartBtn.addEventListener('click', initGame);
+        if(langBtn) langBtn.addEventListener('click', toggleLanguage);
+        if(ruleToggleBtn) ruleToggleBtn.addEventListener('click', () => toggleRules()); 
+        if(shareBtn) shareBtn.addEventListener('click', openShareModal); 
+        if(closeQrBtn) closeQrBtn.addEventListener('click', closeShareModal); 
+        if(copyUrlBtn) copyUrlBtn.addEventListener('click', copyUrl);
+        if(qrModal) qrModal.addEventListener('click', (e) => { if (e.target === qrModal) closeShareModal(); });
+        
+        if(guessInput) {
+            guessInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { e.preventDefault(); processGuess(); } });
+            guessInput.addEventListener('keydown', (e) => { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.stopPropagation(); } });
+        }
+        initGame();
+    </script>
+</body>
+</html>
