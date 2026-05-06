@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>高質量 Prompt: 井字過三關</title>
+    <title>Tic-Tac-Toe Game Prompt</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
@@ -23,24 +23,38 @@
         }
     </style>
 </head>
-<body class="bg-black min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden">
+<body class="bg-black min-h-screen flex flex-col items-center justify-center p-4 md:p-6 relative overflow-hidden">
 
     <!-- 背景光暈 -->
     <div class="ambient-glow-emerald"></div>
 
-    <div class="w-full max-w-4xl z-10 bg-emerald-950/20 p-8 md:p-12 rounded-[2.5rem] border border-emerald-500/30 flex flex-col shadow-[0_0_40px_rgba(16,185,129,0.15)] relative backdrop-blur-sm">
+    <div class="w-full max-w-4xl z-10 bg-emerald-950/20 p-6 md:p-12 rounded-[2.5rem] border border-emerald-500/30 flex flex-col shadow-[0_0_40px_rgba(16,185,129,0.15)] relative backdrop-blur-sm">
         
-        <!-- 雙語切換按鈕 -->
-        <button id="promptLangBtn" class="absolute top-8 right-8 md:top-10 md:right-12 bg-emerald-600 hover:bg-emerald-500 rounded-full transition-colors text-sm font-bold w-10 h-10 flex items-center justify-center text-white shadow-lg focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-black">EN</button>
-        
-        <!-- 標題 -->
-        <div class="flex items-center gap-4 mb-8">
-            <div class="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 text-2xl shadow-lg">✅</div>
-            <h1 id="prompt-title" class="text-3xl md:text-4xl font-bold text-emerald-400 tracking-tight">高質量的 Prompt</h1>
+        <!-- 標題與操作按鈕區 (針對手機版優化的排版) -->
+        <div class="flex flex-col items-center md:items-start gap-6 mb-8 w-full">
+            
+            <!-- 標題 -->
+            <div class="flex items-center gap-3 md:gap-4">
+                <div class="w-10 h-10 md:w-12 md:h-12 rounded-full bg-emerald-500/20 flex shrink-0 items-center justify-center text-emerald-400 text-xl md:text-2xl shadow-lg">✅</div>
+                <h1 id="prompt-title" class="text-3xl md:text-4xl font-bold text-emerald-400 tracking-tight text-center md:text-left">Tic-Tac-Toe Game</h1>
+            </div>
+
+            <!-- 操作按鈕 (語言切換 + Copy跳轉) -->
+            <div class="flex items-center justify-center md:justify-start gap-3 w-full sm:w-auto">
+                <button id="promptLangBtn" class="bg-emerald-600 hover:bg-emerald-500 rounded-full transition-colors text-sm font-bold w-12 h-12 md:w-14 md:h-14 flex shrink-0 items-center justify-center text-white shadow-lg focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-black">EN</button>
+                
+                <button id="copyAndGoBtn" class="group flex flex-1 sm:flex-none items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-base md:text-lg py-3 px-6 md:py-4 md:px-8 rounded-full transition-all duration-300 shadow-[0_0_20px_rgba(16,185,129,0.4)] hover:shadow-[0_0_30px_rgba(16,185,129,0.6)] transform hover:-translate-y-1 focus:outline-none">
+                    <span id="copyBtnText">Copy!</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 md:h-6 md:w-6 transform group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                </button>
+            </div>
+
         </div>
         
         <!-- Prompt 內容區 -->
-        <div class="bg-black/60 p-8 rounded-2xl border border-emerald-500/20 text-base md:text-xl text-gray-200 overflow-y-auto leading-relaxed space-y-4 shadow-inner mb-8">
+        <div class="bg-black/60 p-6 md:p-8 rounded-2xl border border-emerald-500/20 text-sm md:text-xl text-gray-200 overflow-y-auto leading-relaxed space-y-4 shadow-inner mb-2 md:mb-4">
             <p id="prompt-line-1">請幫我寫一個完整的 Tic-Tac-Toe (井字遊戲) 網頁。</p>
             <p id="prompt-line-2">請將 HTML, CSS, 和 JavaScript 程式碼放在同一個檔案中。</p>
             <p id="prompt-line-3">使用 3x3 的網格。</p>
@@ -50,19 +64,10 @@
             <p id="prompt-line-7">包含一個「重新開始」的按鈕。</p>
         </div>
 
-        <!-- Copy & 跳轉按鈕 -->
-        <div class="flex justify-center">
-            <button id="copyAndGoBtn" class="group flex items-center gap-3 bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-lg md:text-xl py-4 px-10 rounded-full transition-all duration-300 shadow-[0_0_20px_rgba(16,185,129,0.4)] hover:shadow-[0_0_30px_rgba(16,185,129,0.6)] transform hover:-translate-y-1 focus:outline-none">
-                <span id="copyBtnText">Copy!</span>
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 transform group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                </svg>
-            </button>
-        </div>
     </div>
 
     <!-- 複製成功提示 (Toast) -->
-    <div id="toast" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-white text-black px-6 py-3 rounded-full font-bold shadow-2xl opacity-0 transition-opacity duration-300 pointer-events-none z-50">
+    <div id="toast" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-white text-black px-6 py-3 rounded-full font-bold shadow-2xl opacity-0 transition-opacity duration-300 pointer-events-none z-50 text-sm md:text-base whitespace-nowrap">
         已複製到剪貼簿！跳轉中...
     </div>
 
@@ -86,8 +91,8 @@
 
         const promptDict = {
             zh: {
-                pageTitle: "高質量 Prompt: 井字過三關",
-                title: "高質量的 Prompt",
+                pageTitle: "Tic-Tac-Toe Game Prompt",
+                title: "Tic-Tac-Toe Game",
                 btn: "EN",
                 copyBtn: "Copy!",
                 toastMsg: "已複製到剪貼簿！跳轉中...",
@@ -102,8 +107,8 @@
                 ]
             },
             en: {
-                pageTitle: "High-Quality Prompt: Tic-Tac-Toe",
-                title: "High-Quality Prompt",
+                pageTitle: "Tic-Tac-Toe Game Prompt",
+                title: "Tic-Tac-Toe Game",
                 btn: "中",
                 copyBtn: "Copy!",
                 toastMsg: "Copied to clipboard! Redirecting...",
