@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高質量 Prompt: 井字過三關</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background-color: #000000; 
+            color: #f5f5f7; 
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* 環境光暈 */
+        .ambient-glow-emerald {
+            position: fixed; width: 60vw; height: 60vw;
+            background: radial-gradient(circle, rgba(16, 185, 129, 0.15) 0%, rgba(0,0,0,0) 70%);
+            top: 50%; left: 50%; transform: translate(-50%, -50%);
+            pointer-events: none; z-index: 0;
+        }
+    </style>
+</head>
+<body class="bg-black min-h-screen flex flex-col items-center justify-center p-6 relative overflow-hidden">
+
+    <!-- 背景光暈 -->
+    <div class="ambient-glow-emerald"></div>
+
+    <div class="w-full max-w-4xl z-10 bg-emerald-950/20 p-8 md:p-12 rounded-[2.5rem] border border-emerald-500/30 flex flex-col shadow-[0_0_40px_rgba(16,185,129,0.15)] relative backdrop-blur-sm">
+        
+        <!-- 雙語切換按鈕 -->
+        <button id="promptLangBtn" class="absolute top-8 right-8 md:top-10 md:right-12 bg-emerald-600 hover:bg-emerald-500 rounded-full transition-colors text-sm font-bold w-10 h-10 flex items-center justify-center text-white shadow-lg focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-black">EN</button>
+        
+        <!-- 標題 -->
+        <div class="flex items-center gap-4 mb-8">
+            <div class="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 text-2xl shadow-lg">✅</div>
+            <h1 id="prompt-title" class="text-3xl md:text-4xl font-bold text-emerald-400 tracking-tight">高質量的 Prompt</h1>
+        </div>
+        
+        <!-- Prompt 內容區 -->
+        <div class="bg-black/60 p-8 rounded-2xl border border-emerald-500/20 text-base md:text-xl text-gray-200 overflow-y-auto leading-relaxed space-y-4 shadow-inner mb-8">
+            <p id="prompt-line-1">請幫我寫一個完整的 Tic-Tac-Toe (井字遊戲) 網頁。</p>
+            <p id="prompt-line-2">請將 HTML, CSS, 和 JavaScript 程式碼放在同一個檔案中。</p>
+            <p id="prompt-line-3">使用 3x3 的網格。</p>
+            <p id="prompt-line-4">遊戲模式為兩人輪流下棋 (X 和 O)。</p>
+            <p id="prompt-line-5">需要顯示目前是哪一位玩家下棋。</p>
+            <p id="prompt-line-6">能夠偵測勝利（連線、垂直、對角線）和下平手。</p>
+            <p id="prompt-line-7">包含一個「重新開始」的按鈕。</p>
+        </div>
+
+        <!-- Copy & 跳轉按鈕 -->
+        <div class="flex justify-center">
+            <button id="copyAndGoBtn" class="group flex items-center gap-3 bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-lg md:text-xl py-4 px-10 rounded-full transition-all duration-300 shadow-[0_0_20px_rgba(16,185,129,0.4)] hover:shadow-[0_0_30px_rgba(16,185,129,0.6)] transform hover:-translate-y-1 focus:outline-none">
+                <span id="copyBtnText">Copy!</span>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 transform group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- 複製成功提示 (Toast) -->
+    <div id="toast" class="fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-white text-black px-6 py-3 rounded-full font-bold shadow-2xl opacity-0 transition-opacity duration-300 pointer-events-none z-50">
+        已複製到剪貼簿！跳轉中...
+    </div>
+
+    <script>
+        // --- 雙語切換邏輯 ---
+        let promptLang = 'zh';
+        const promptLangBtn = document.getElementById('promptLangBtn');
+        const promptTitle = document.getElementById('prompt-title');
+        const copyBtnText = document.getElementById('copyBtnText');
+        const toastEl = document.getElementById('toast');
+        
+        const promptLines = [
+            document.getElementById('prompt-line-1'),
+            document.getElementById('prompt-line-2'),
+            document.getElementById('prompt-line-3'),
+            document.getElementById('prompt-line-4'),
+            document.getElementById('prompt-line-5'),
+            document.getElementById('prompt-line-6'),
+            document.getElementById('prompt-line-7')
+        ];
+
+        const promptDict = {
+            zh: {
+                pageTitle: "高質量 Prompt: 井字過三關",
+                title: "高質量的 Prompt",
+                btn: "EN",
+                copyBtn: "Copy!",
+                toastMsg: "已複製到剪貼簿！跳轉中...",
+                lines: [
+                    "請幫我寫一個完整的 Tic-Tac-Toe (井字遊戲) 網頁。",
+                    "請將 HTML, CSS, 和 JavaScript 程式碼放在同一個檔案中。",
+                    "使用 3x3 的網格。",
+                    "遊戲模式為兩人輪流下棋 (X 和 O)。",
+                    "需要顯示目前是哪一位玩家下棋。",
+                    "能夠偵測勝利（連線、垂直、對角線）和下平手。",
+                    "包含一個「重新開始」的按鈕。"
+                ]
+            },
+            en: {
+                pageTitle: "High-Quality Prompt: Tic-Tac-Toe",
+                title: "High-Quality Prompt",
+                btn: "中",
+                copyBtn: "Copy!",
+                toastMsg: "Copied to clipboard! Redirecting...",
+                lines: [
+                    "Please help me write a complete Tic-Tac-Toe web page.",
+                    "Put all HTML, CSS, and JavaScript code in a single file.",
+                    "Use a 3x3 grid.",
+                    "The game mode is two players taking turns (X and O).",
+                    "Display which player's turn it is currently.",
+                    "Detect win conditions (horizontal, vertical, diagonal lines) and draws.",
+                    "Include a 'Restart' button."
+                ]
+            }
+        };
+
+        function updatePromptLang() {
+            const data = promptDict[promptLang];
+            document.title = data.pageTitle;
+            promptLangBtn.textContent = data.btn;
+            promptTitle.textContent = data.title;
+            copyBtnText.textContent = data.copyBtn;
+            toastEl.textContent = data.toastMsg;
+            
+            promptLines.forEach((el, index) => {
+                el.textContent = data.lines[index];
+            });
+        }
+
+        promptLangBtn.addEventListener('click', () => {
+            promptLang = promptLang === 'zh' ? 'en' : 'zh';
+            updatePromptLang();
+        });
+
+        // --- 複製與跳轉邏輯 ---
+        const copyAndGoBtn = document.getElementById('copyAndGoBtn');
+
+        copyAndGoBtn.addEventListener('click', () => {
+            // 組合目前語言的 Prompt 文字 (加入換行符號)
+            const textToCopy = promptDict[promptLang].lines.join('\n');
+            
+            // 嘗試使用現代的 Clipboard API
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(textToCopy).then(showToastAndRedirect);
+            } else {
+                // 備用方案 (適用於 iframe 或非 HTTPS 環境)
+                const textArea = document.createElement("textarea");
+                textArea.value = textToCopy;
+                textArea.style.position = "fixed";
+                textArea.style.left = "-999999px";
+                textArea.style.top = "-999999px";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    showToastAndRedirect();
+                } catch (err) {
+                    console.error('複製失敗', err);
+                    alert('複製失敗，請手動複製文字。');
+                }
+                textArea.remove();
+            }
+        });
+
+        function showToastAndRedirect() {
+            // 顯示提示
+            toastEl.classList.remove('opacity-0');
+            toastEl.classList.add('opacity-100');
+            
+            // 按鈕視覺回饋
+            const originalBg = copyAndGoBtn.className;
+            copyAndGoBtn.classList.replace('bg-emerald-500', 'bg-white');
+            copyBtnText.textContent = "Copied!";
+            
+            // 延遲跳轉 (讓使用者看到提示)
+            setTimeout(() => {
+                window.open('https://gemini.google.com/canvas', '_blank');
+                
+                // 還原按鈕狀態
+                setTimeout(() => {
+                    toastEl.classList.remove('opacity-100');
+                    toastEl.classList.add('opacity-0');
+                    copyAndGoBtn.className = originalBg;
+                    copyBtnText.textContent = promptDict[promptLang].copyBtn;
+                }, 500);
+            }, 800);
+        }
+    </script>
+</body>
+</html>
